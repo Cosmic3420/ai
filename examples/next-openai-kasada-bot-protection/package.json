@@ -13,7 +13,7 @@
     "@ai-sdk/react": "1.2.2",
     "@vercel/functions": "latest",
     "ai": "4.2.5",
-    "next": "latest",
+    "next": "15.5.8",
     "react": "^18",
     "react-dom": "^18",
     "sonner": "^1.7.1"
