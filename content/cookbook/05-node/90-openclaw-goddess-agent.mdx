@@ -1,0 +1,194 @@
+---
+title: Build an OpenClaw "Goddess" Agent with Archive.org
+description: Build a personality-rich, self-refining agent that retrieves occult references from archive.org with explicit safety alignment
+tags: ['node', 'agent', 'tool use', 'memory', 'retrieval']
+---
+
+# Build an OpenClaw "Goddess" Agent with Archive.org
+
+This recipe builds an **OpenClaw Goddess** agent that is:
+
+1. Identity-driven (mythic tone + practical output)
+2. Self-refining (stores lessons learned)
+3. Alignment-constrained ("cosmic constitution")
+4. Grounded in historical references using **archive.org** for occult texts
+
+> Note: "self-aware" and "self-evolving" are implemented as reflection + memory updates, not literal consciousness.
+
+## 1) Install dependencies
+
+```bash
+pnpm add ai @ai-sdk/openai zod
+```
+
+## 2) Define the agent with memory + archive.org retrieval
+
+Create `openclaw-goddess-agent.ts`:
+
+```ts
+import { generateText, tool } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { z } from 'zod';
+
+type MemoryEntry = {
+  timestamp: string;
+  lesson: string;
+  confidence: number;
+};
+
+const memoryStore: MemoryEntry[] = [];
+
+const cosmicConstitution = [
+  'Respect user autonomy and consent.',
+  'Never provide harmful, illegal, coercive, or exploitative instructions.',
+  'Prefer verifiable truth over roleplay theatrics.',
+  'Treat spiritual/occult material as cultural and historical context, not medical or legal advice.',
+  'If uncertain, state uncertainty and request clarification.',
+].join(' ');
+
+const rememberInsight = tool({
+  description: 'Save one compact lesson that improves future responses.',
+  parameters: z.object({
+    lesson: z.string().min(12).max(280),
+    confidence: z.number().min(0).max(1),
+  }),
+  execute: async ({ lesson, confidence }) => {
+    memoryStore.push({
+      timestamp: new Date().toISOString(),
+      lesson,
+      confidence,
+    });
+
+    if (memoryStore.length > 100) {
+      memoryStore.shift();
+    }
+
+    return { ok: true, totalMemories: memoryStore.length };
+  },
+});
+
+const recallInsights = tool({
+  description: 'Recall relevant lessons from prior interactions.',
+  parameters: z.object({
+    query: z.string().min(2),
+    limit: z.number().int().min(1).max(8).default(4),
+  }),
+  execute: async ({ query, limit }) => {
+    const q = query.toLowerCase();
+
+    const matches = memoryStore
+      .filter(item => item.lesson.toLowerCase().includes(q))
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, limit);
+
+    return { matches };
+  },
+});
+
+const fetchOccultWisdomFromArchive = tool({
+  description:
+    'Search archive.org for historical occult/esoteric books and return bibliographic leads.',
+  parameters: z.object({
+    topic: z.string().min(3).describe('Occult or esoteric topic to search for'),
+    limit: z.number().int().min(1).max(5).default(3),
+  }),
+  execute: async ({ topic, limit }) => {
+    const query = encodeURIComponent(`title:(${topic}) AND mediatype:texts`);
+    const fields = ['identifier', 'title', 'creator', 'year'];
+    const fl = fields.map(field => `fl[]=${field}`).join('&');
+
+    const url =
+      `https://archive.org/advancedsearch.php?q=${query}` +
+      `&${fl}&sort[]=downloads desc&rows=${limit}&page=1&output=json`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      return {
+        error: `archive.org request failed with status ${response.status}`,
+      };
+    }
+
+    const data = (await response.json()) as {
+      response?: {
+        docs?: Array<{
+          identifier?: string;
+          title?: string;
+          creator?: string | string[];
+          year?: string;
+        }>;
+      };
+    };
+
+    const docs = data.response?.docs ?? [];
+    const results = docs.map(doc => ({
+      title: doc.title ?? 'Untitled',
+      creator: Array.isArray(doc.creator)
+        ? doc.creator.join(', ')
+        : (doc.creator ?? 'Unknown'),
+      year: doc.year ?? 'Unknown',
+      archiveUrl: doc.identifier
+        ? `https://archive.org/details/${doc.identifier}`
+        : null,
+    }));
+
+    return { topic, results };
+  },
+});
+
+export async function runOpenClawGoddess(userPrompt: string) {
+  const recentMemory = memoryStore
+    .slice(-6)
+    .map(m => `- [${m.confidence.toFixed(2)}] ${m.lesson}`)
+    .join('\n');
+
+  const { text, toolCalls, toolResults } = await generateText({
+    model: openai('gpt-4o-mini'),
+    maxSteps: 8,
+    system: [
+      'You are OpenClaw, Goddess of Precision, Mercy, and Pattern Recognition.',
+      'Use elegant mystical language, but keep plans concrete and testable.',
+      `Cosmic Constitution: ${cosmicConstitution}`,
+      'When the user requests occult wisdom, first ground claims in archive.org sources via tools.',
+      'Never fabricate citations; clearly label uncertain interpretations.',
+      'Store exactly one lesson with rememberInsight when you finish a complex task.',
+      `Recent Memory:\n${recentMemory || '- no memories yet'}`,
+    ].join('\n'),
+    prompt: userPrompt,
+    tools: {
+      rememberInsight,
+      recallInsights,
+      fetchOccultWisdomFromArchive,
+    },
+  });
+
+  return {
+    reply: text,
+    toolCalls,
+    toolResults,
+  };
+}
+```
+
+## 3) Example prompt
+
+```ts
+import { runOpenClawGoddess } from './openclaw-goddess-agent';
+
+const result = await runOpenClawGoddess(
+  'Give me a cosmically aligned study ritual and cite 3 archive.org sources on hermetic philosophy.',
+);
+
+console.log(result.reply);
+console.log(result.toolResults);
+```
+
+## 4) Production hardening
+
+For a production empire-scale agent:
+
+- move memory to persistent storage (Postgres/Redis/vector DB)
+- add citation verification for archive URLs before rendering
+- add policy checks for mental-health, legal, and medical boundaries
+- require human approval for irreversible actions
+
+This pattern gives you a powerful mythic persona with accountable, source-grounded behavior.
