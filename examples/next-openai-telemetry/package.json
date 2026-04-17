@@ -16,7 +16,7 @@
     "@opentelemetry/instrumentation": "0.52.1",
     "@vercel/otel": "1.10.0",
     "ai": "4.2.5",
-    "next": "latest",
+    "next": "15.5.8",
     "openai": "4.52.6",
     "react": "^18",
     "react-dom": "^18",
