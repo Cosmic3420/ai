@@ -1,0 +1,201 @@
+---
+title: AgentQL query contexts
+description: Improve AgentQL query accuracy with semantic and structural contexts.
+---
+
+# AgentQL query contexts
+
+When a page contains similar elements (for example, multiple sign-in buttons), query context helps AgentQL resolve ambiguity.
+
+This guide shows how to use:
+
+- **semantic context**: natural-language hints in `(...)`
+- **structural context**: query hierarchy using nested objects
+
+## Why context matters
+
+AgentQL is schema-less and flexible by design. That flexibility is powerful, but it can lead to inconsistent extraction when your query terms are too broad.
+
+Context narrows the target and improves reliability.
+
+## Semantic context
+
+Add natural-language instructions in parentheses after a term.
+
+```graphql
+{
+  products(exclude sponsored results or ads)[] {
+    name
+    description(summarize within 150 words)
+    price(display in local currency with two decimal places)
+  }
+}
+```
+
+### Common semantic use cases
+
+#### 1) Filtering with intent
+
+```graphql
+{
+  products(exclude sponsored results or ads)[] {
+    name
+    description
+    price(integer)
+  }
+}
+```
+
+> **Note:** AI-driven filtering can vary. For strict filtering, extract first, then filter in application code.
+
+#### 2) Requesting summaries
+
+```graphql
+{
+  products[] {
+    name
+    description(summarize within 150 words)
+    price(integer)
+  }
+}
+```
+
+#### 3) Requesting formatting
+
+```graphql
+{
+  products[] {
+    name
+    description
+    price(display in local currency with two decimal places)
+  }
+}
+```
+
+> **Note:** For deterministic formatting, apply formatting in your code after extraction.
+
+#### 4) Constraining HTML attributes
+
+```graphql
+{
+  products(must be a span tag)[]
+}
+```
+
+```graphql
+{
+  products(must be a span tag with class="product-name")[]
+}
+```
+
+## Structural context
+
+Structural context uses query nesting to communicate location and hierarchy.
+
+```graphql
+{
+  footer {
+    about_us
+    contact_us
+    social_media_links[]
+  }
+}
+```
+
+This tells AgentQL to prioritize footer-located matches over similar elements elsewhere.
+
+You can often express the same intent semantically:
+
+```graphql
+{
+  about_us(located in the footer)
+  contact_us(located in the footer)
+  social_media_links(footer links)[]
+}
+```
+
+## Syntax checklist
+
+Use this checklist to avoid invalid or low-quality queries:
+
+- Enclose the query in `{}`.
+- Put one term per line.
+- Do not separate terms with commas.
+- Use nested containers with `{ ... }`.
+- Add `[]` for lists.
+- Add optional context with `(...)`.
+
+## Recommended naming conventions
+
+- Use lowercase terms.
+- Use underscores for multi-word terms (`search_box`).
+- Use suffixes for intent:
+  - `*_btn` for clickable elements
+  - `*_box` for input elements
+- Keep child indentation consistent.
+
+## Practical disambiguation patterns
+
+### Add precise descriptions
+
+```graphql
+{
+  sign_in_btn(google sign-in button)
+}
+```
+
+### Add hierarchy hints
+
+```graphql
+{
+  header {
+    sign_in_btn
+  }
+}
+```
+
+### Add surrounding terms
+
+```graphql
+{
+  button_a
+  sign_in_btn
+  button_b
+}
+```
+
+## Example patterns
+
+### Nested list extraction
+
+```graphql
+{
+  results {
+    products[] {
+      product_name
+      product_price(integer)
+      reviews[]
+    }
+  }
+}
+```
+
+### Model selector interaction query
+
+```graphql
+{
+  model_selector {
+    iphone_15_pro_max_btn
+    iphone_15_pro_btn
+  }
+}
+```
+
+## Summary
+
+To improve AgentQL accuracy:
+
+1. Start with simple terms.
+2. Add semantic context first (usually easiest and most explicit).
+3. Add structural context when page hierarchy matters.
+4. Post-process in code for strict filtering/formatting guarantees.
