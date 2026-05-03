@@ -1,14 +1,1 @@
-.DS_Store
-node_modules
-.turbo
-*.log
-.next
-dist
-dist-ssr
-*.local
-.env
-.cache
-server/dist
-public/dist
-.turbo
-test-results
+Nothing needs to be added to .gitignore since only a markdown file (ai_ecosystem_analysis.md) was added, which is a source file that should be tracked in version control. No build artifacts, dependencies, or temporary files were included in the changes.
